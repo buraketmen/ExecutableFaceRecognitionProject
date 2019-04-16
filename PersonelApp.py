@@ -3,7 +3,7 @@ import os
 import cv2
 import datetime
 import locale
-from PyQt5 import QtGui, QtWidgets
+from PyQt5 import QtGui
 from PersonelTakipMain import Ui_MainWindow
 import PersonelSureEkrani
 from Personel import Ui_Dialog
@@ -17,7 +17,8 @@ from xlsxwriter.workbook import Workbook
 import sqlite3
 
 locale.setlocale(locale.LC_ALL, '')
-conn = sqlite3.connect('personelDB.db')
+path = os.getcwd()
+conn = sqlite3.connect(str(path)+ "/" + "personelDB.db")
 curs = conn.cursor()
 curs.execute("""
             CREATE TABLE IF NOT EXISTS personeller(
@@ -54,11 +55,12 @@ curs.execute("""
 known_face_encodings = []
 known_face_names = []
 
+
 def Train_Faces():
-    if (os.path.exists("./yuzler")):
+    if (os.path.exists(str(path) +"/yuzler")):
         known_face_names.clear()
         known_face_encodings.clear()
-        for root, dirs, files in os.walk("./yuzler"):
+        for root, dirs, files in os.walk(str(path)+ "/yuzler"):
             for filename in files:
                 file_result = filename.split("_")
                 known_face_names.append(file_result[0])
@@ -74,11 +76,10 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
         self.photo = None
         self.fname = None
         self.capture = None
-        self.oldtcno=None
         self.iterim=1
         self.mesaitipi = "Gunduz"
         self.oldsecond=None
-        self.backimage= cv2.imread('background.jpg')
+        self.backimage= cv2.imread(str(path)+'/background.jpg')
         self.Init_Ui()
         self.status_bar()
         curs.execute("DELETE FROM log")
@@ -180,11 +181,11 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
                                 QMessageBox.Ok, QMessageBox.Ok)
     def Contact(self):
         QMessageBox.information(self, 'Gelistirici Hakkinda...',
-                            "Bu program Sakarya Universitesi ogrencisi, Hasan Burak Ketmen tarafından yazilmistir.\n" + "Iletisim icin buraketmen@gmail.com mail adresine mail atabilirsiniz.",
+                            "Bu program Sakarya Universitesi ogrencisi, Hasan Burak Ketmen tarafından yazilmistir.\n" + "Iletisim icin buraketmen@gmail.com adresine mail atabilirsiniz.",
                             QMessageBox.Ok, QMessageBox.Ok)
     def About_Program(self):
         QMessageBox.information(self, 'Program Hakkinda...',
-                                "Bu program, HOG ve 68 düğüm algoritmalarını kullanarak yuz tanima islemi yapar ve taninan yuzleri bir listeye cesitli filtrelerden gecirerek kaydedip personelin giris ve cikisini kontrol etme imkani sunar.\n",
+                                "Bu program, HOG ve 68 Nodes algoritmalarını kullanarak yuz tanima islemi yapar ve taninan yuzleri cesitli filtrelerden gecirerek kaydedip personelin giris ve cikisini kontrol etme imkani sunar.\n",
                                 QMessageBox.Ok, QMessageBox.Ok)
 
     def Show_Personeller(self):
@@ -250,10 +251,10 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
 
     def Train_Faces(self):
         self.face_Train =True
-        if (os.path.exists("./yuzler")):
+        if (os.path.exists(str(path)+"/yuzler")):
             known_face_names.clear()
             known_face_encodings.clear()
-            for root, dirs, files in os.walk("./yuzler"):
+            for root, dirs, files in os.walk(str(path)+"/yuzler"):
                 for filename in files:
                     file_result = filename.split("_")
                     known_face_names.append(file_result[0])
@@ -305,10 +306,7 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
                 dotname = switch_name[4:]
                 new_name = dotname[::-1]
                 tcno=new_name
-                if(str(self.oldtcno) !=str(tcno) and self.oldtcno!=None):
-                    self.Add_Log(self.oldtcno)
                 self.Add_Log(tcno)
-                self.oldtcno = tcno
             else:
                 new_name = "Bilinmiyor"
             cv2.putText(img, new_name, (left + 1, bottom + 30), font, 1.0, (255, 255, 255), 1)
@@ -321,7 +319,7 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
         date = str(an.day) + "/" + str(an.month) + "/" + str(an.year)
         time = str(an.hour) + ":" + str(an.minute) + ":" + str(an.second)
 
-        logdate= "./Log/" + str(an.day) + "." + str(an.month) + "." + str(an.year) + ".txt"
+        logdate= str(path) + "/Log/" + str(an.day) + "." + str(an.month) + "." + str(an.year) + ".txt"
         logToday = open(logdate,"a+")
 
         search = curs.execute('SELECT Ad, Soyad, MesaiTipi FROM personeller WHERE TcNo = ? ', (tcno,))
@@ -332,14 +330,14 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
 
         tipi = "Bilinmiyor"
         if(mesaitipi=="Gunduz"):
-            if(7<=hour<=11):
+            if(7<=hour<=10):
                 tipi = "Giris"
-            if(23 >= hour >= 16):
+            if(20 >= hour >= 16):
                 tipi = "Cikis"
         if (mesaitipi == "Gece"):
-            if (7 <= hour <= 11):
+            if (7 <= hour <= 10):
                 tipi = "Cikis"
-            if (23 >= hour >= 16):
+            if (20 >= hour >= 16):
                 tipi = "Giris"
 
         if (self.iterim == 1):
@@ -358,18 +356,15 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
             for row in rows:
                 i=i+1
         if(i==0):
-            if (7 <= hour <= 11 or 23 >= hour >= 16):
+            if (7 <= hour <= 10 or 20 >= hour >= 16):
                 curs.execute("INSERT INTO giriscikis (TcNo,Ad,Soyad,Tarih,Saat,Tipi) VALUES(?,?,?,?,?,?)",
                              (tcno, ad, soyad, date, time,tipi))
                 conn.commit()
         if(i==1):
             for row in rows:
-                try:
-                    log_hour = int(row[0][0:2])
-                except ValueError:
-                    log_hour = int(row[0][0:1])
+                log_hour=int(row[0][0:2])
             if(log_hour +5 < hour):
-                if (7 <= hour <= 11 or 23 >= hour >= 16):
+                if (7 <= hour <= 10 or 20 >= hour >= 16):
                     curs.execute("INSERT INTO giriscikis (TcNo,Ad,Soyad,Tarih,Saat,Tipi) VALUES(?,?,?,?,?,?)",
                                  (tcno, ad, soyad, date, time,tipi))
                     conn.commit()
@@ -394,7 +389,7 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
         aciklama = self.addingAdd.editAciklama.text()
         filename = ""
         if (str(self.photo) != "None"):
-            filename = "./yuzler/" + str(tcno) + ".jpg"
+            filename = str(path)+ "/yuzler/" + str(tcno) + ".jpg"
         search = curs.execute('SELECT TcNo FROM personeller WHERE TcNo = ? ', (tcno,))
         results = search.fetchone()
         if (len(tcno) == 11 and len(ad) <= 20 and len(soyad) <= 20 and len(yas) <= 2 and len(telno) <= 11 and len(pozisyon) <= 30):
@@ -411,7 +406,7 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
                         cv2.imwrite(filename, crop_img)
                         if(self.addingAdd.radioButtonGece.isChecked()==True):
                             self.mesaitipi ="Gece"
-                        image = face_recognition.load_image_file("./yuzler/" + str(tcno) + ".jpg")
+                        image = face_recognition.load_image_file(str(path)+"/yuzler/" + str(tcno) + ".jpg")
                         if(len(face_recognition.face_encodings(image))>0):
                             known_face_names.append(str(tcno) + ".jpg")
                             image_face_encoding = face_recognition.face_encodings(image)[0]
@@ -428,7 +423,7 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
                                                     "Personel kaydi ve yuz taramasi basariyla yapildi.\n",
                                                     QMessageBox.Ok, QMessageBox.Ok)
                         else:
-                            os.remove("./yuzler/" + str(tcno) + ".jpg")
+                            os.remove(str(path)+"/yuzler/" + str(tcno) + ".jpg")
                             QMessageBox.warning(self, 'Gecersiz Fotograf',
                                                 "Eklenmek istenen fotograf yuz tanima icin gecersiz.\n",
                                                 QMessageBox.Ok, QMessageBox.Ok)
@@ -511,7 +506,7 @@ class Personel(QDialog,Ui_Dialog):
         self.setupUi(self)
         self.setWindowTitle('Personel Ekranı')
         try:
-            self.setWindowIcon(QtGui.QIcon('./icon.png'))
+            self.setWindowIcon(QtGui.QIcon(str(path) +"/icon.png"))
         except Exception:
             pass
         self.Load_Database()
@@ -596,8 +591,8 @@ class Personel(QDialog,Ui_Dialog):
                     self.addingUpdate.radioButtonGeceGuncelle.setChecked(True)
                 if(mesaitipi=="Gunduz"):
                     self.addingUpdate.radioButtonGunduzGuncelle.setChecked(True)
-                if os.path.exists("./yuzler/" + str(tcno) + ".jpg"):
-                    self.photo = cv2.imread("./yuzler/" +str(tcno) + ".jpg", cv2.IMREAD_ANYCOLOR)
+                if os.path.exists(str(path) +"/yuzler/" + str(tcno) + ".jpg"):
+                    self.photo = cv2.imread(str(path) +"/yuzler/" +str(tcno) + ".jpg", cv2.IMREAD_ANYCOLOR)
                     self.oldphoto = self.photo
                     self.displayPhoto(2)
 
@@ -613,7 +608,7 @@ class Personel(QDialog,Ui_Dialog):
         aciklama = self.addingAdd.editAciklama.text()
         filename = ""
         if (str(self.photo) != "None"):
-            filename = "./yuzler/" + str(tcno) + ".jpg"
+            filename = str(path)+ "/yuzler/" + str(tcno) + ".jpg"
         search = curs.execute('SELECT TcNo FROM personeller WHERE TcNo = ? ', (tcno,))
         results = search.fetchone()
         if (len(tcno) == 11 and len(ad) <= 20 and len(soyad) <= 20 and len(yas) <= 2 and len(telno) <= 11 and len(
@@ -631,7 +626,7 @@ class Personel(QDialog,Ui_Dialog):
                         cv2.imwrite(filename, crop_img)
                         if (self.addingAdd.radioButtonGece.isChecked() == True):
                             self.mesaitipi = "Gece"
-                        image = face_recognition.load_image_file("./yuzler/" + str(tcno) + ".jpg")
+                        image = face_recognition.load_image_file(str(path) +"/yuzler/" + str(tcno) + ".jpg")
                         if (len(face_recognition.face_encodings(image)) > 0):
                             known_face_names.append(str(tcno) + ".jpg")
                             image_face_encoding = face_recognition.face_encodings(image)[0]
@@ -648,7 +643,7 @@ class Personel(QDialog,Ui_Dialog):
                                                     "Personel kaydi ve yuz taramasi basariyla yapildi.\n",
                                                     QMessageBox.Ok, QMessageBox.Ok)
                         else:
-                            os.remove("./yuzler/" + str(tcno) + ".jpg")
+                            os.remove( str(path) +"/yuzler/" + str(tcno) + ".jpg")
                             QMessageBox.warning(self, 'Gecersiz Fotograf',
                                                 "Eklenmek istenen fotograf yuz tanima icin gecersiz.\n",
                                                 QMessageBox.Ok, QMessageBox.Ok)
@@ -683,7 +678,7 @@ class Personel(QDialog,Ui_Dialog):
         aciklama = self.addingUpdate.editAciklama.text()
         if(self.addingUpdate.radioButtonGeceGuncelle.isChecked()==True):
             self.mesaitipi="Gece"
-        filename = "./yuzler/" + str(tcno) + ".jpg"
+        filename = str(path)+ "/yuzler/" + str(tcno) + ".jpg"
         search = curs.execute('SELECT TcNo FROM personeller WHERE TcNo = ? ', (tcno,))
         results = search.fetchone()
         if (len(tcno) == 11 and len(ad) <= 20 and len(soyad) <= 20 and len(yas) <= 2 and len(telno) <= 11 and len(
@@ -696,8 +691,8 @@ class Personel(QDialog,Ui_Dialog):
                         for (top, right, bottom, left), name in zip(face_locations, face_names):
                             crop_img = self.photo[top:bottom, left:right]
                         if (len(face_recognition.face_encodings(crop_img)) > 0):
-                            if os.path.exists("./yuzler/" + str(self.oldtcno) + ".jpg"):
-                                os.remove("./yuzler/" + str(self.oldtcno) + ".jpg")
+                            if os.path.exists(str(path) +"/yuzler/" + str(self.oldtcno) + ".jpg"):
+                                os.remove(str(path) +"/yuzler/" + str(self.oldtcno) + ".jpg")
                             cv2.imwrite(filename, crop_img)
                             curs.execute("UPDATE personeller SET TcNo = ? , image = ? , Ad = ? ,Soyad = ? , Yas = ? , Pozisyon = ? , TelNo = ? , MesaiTipi = ?, Aciklama = ? WHERE TcNo = ?",
                                          (tcno, filename, ad, soyad, yas, pozisyon, telno, self.mesaitipi, aciklama, self.oldtcno))
@@ -714,13 +709,13 @@ class Personel(QDialog,Ui_Dialog):
                                                     QMessageBox.Ok, QMessageBox.Ok)
                         else:
                             print("1")
-                            self.loadedImage("./yuzler/" + str(self.oldtcno) + ".jpg")
+                            self.loadedImage(str(path) + "/yuzler/" + str(self.oldtcno) + ".jpg")
                             QMessageBox.warning(self, 'Gecersiz Fotograf',
                                                 "Eklenmek istenen fotograf yuz tanima icin gecersiz.\n",
                                                 QMessageBox.Ok, QMessageBox.Ok)
                     else:
                         print("2")
-                        self.loadedImage("./yuzler/" + str(self.oldtcno) + ".jpg")
+                        self.loadedImage(str(path) + "/yuzler/" + str(self.oldtcno) + ".jpg")
                         QMessageBox.warning(self, 'Gecersiz Fotograf',
                                             "Eklenmek istenen fotograf yuz tanima icin gecersiz.\n",
                                             QMessageBox.Ok, QMessageBox.Ok)
@@ -749,8 +744,8 @@ class Personel(QDialog,Ui_Dialog):
                             for (top, right, bottom, left), name in zip(face_locations, face_names):
                                 crop_img = self.photo[top:bottom, left:right]
                             if (len(face_recognition.face_encodings(crop_img)) > 0):
-                                if os.path.exists("./yuzler/" + str(self.oldtcno) + ".jpg"):
-                                    os.remove("./yuzler/" + str(self.oldtcno) + ".jpg")
+                                if os.path.exists(str(path) + "/yuzler/" + str(self.oldtcno) + ".jpg"):
+                                    os.remove(str(path) + "/yuzler/" + str(self.oldtcno) + ".jpg")
                                 cv2.imwrite(filename, crop_img)
                                 curs.execute( "UPDATE personeller SET TcNo = ? , image = ? , Ad = ? , Soyad = ? , Yas = ? , Pozisyon = ? , TelNo = ? , MesaiTipi = ?, Aciklama = ? WHERE TcNo = ?",
                                     (tcno, filename, ad, soyad, yas, pozisyon, telno, self.mesaitipi, aciklama, self.oldtcno))
@@ -765,18 +760,16 @@ class Personel(QDialog,Ui_Dialog):
                                                         "Personel bilgi guncellemesi basariyla yapildi.\n" + "Yuz taramasi yapilmadigi icin tekrar tarama yapilmasi tavsiye edilir.",
                                                         QMessageBox.Ok, QMessageBox.Ok)
                             else:
-                                self.loadedImage("./yuzler/" + str(self.oldtcno) + ".jpg")
+                                self.loadedImage(str(path) + "/yuzler/" + str(self.oldtcno) + ".jpg")
                                 QMessageBox.warning(self, 'Gecersiz Fotograf',
                                                     "Eklenmek istenen fotograf yuz tanima icin gecersiz.\n",
                                                     QMessageBox.Ok, QMessageBox.Ok)
                         else:
-                            self.loadedImage("./yuzler/" + str(self.oldtcno) + ".jpg")
+                            self.loadedImage(str(path) + "/yuzler/" + str(self.oldtcno) + ".jpg")
                             QMessageBox.warning(self, 'Gecersiz Fotograf',
                                                 "Eklenmek istenen fotograf yuz tanima icin gecersiz.\n",
                                                 QMessageBox.Ok, QMessageBox.Ok)
                     else:
-                        if os.path.exists("./yuzler/" + str(self.oldtcno) + ".jpg"):
-                            os.remove("./yuzler/" + str(self.oldtcno) + ".jpg")
                         cv2.imwrite(filename, self.oldphoto)
                         curs.execute(
                             "UPDATE personeller SET TcNo = ? , image = ? , Ad = ? , Soyad = ? , Yas = ? , Pozisyon = ? , TelNo = ? , MesaiTipi = ?, Aciklama = ? WHERE TcNo = ?",
@@ -812,11 +805,11 @@ class Personel(QDialog,Ui_Dialog):
                 data = row[1]
                 tcno = data[0]
                 buttonReply = QMessageBox.question(self, 'Personel Silme İslemi', str(tcno) +
-                                                   " kimlik numarali personeli sildiginizde personele ait giris ve cikis kayitlari da silinir. Bunu yapmak istediginize emin misiniz?",
+                                                   " T.C. Numaralı personeli sildiginizde personele ait giris-cikis kayitlari da silinir. Bunu yapmak istediginize emin misiniz?",
                                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
                 if buttonReply == QMessageBox.Yes:
-                    if os.path.exists("./yuzler/" + str(tcno) + ".jpg"):
-                        os.remove("./yuzler/" + str(tcno) + ".jpg")
+                    if os.path.exists(str(path) + "/yuzler/" + str(tcno) + ".jpg"):
+                        os.remove(str(path) + "/yuzler/" + str(tcno) + ".jpg")
                     curs.execute("DELETE FROM personeller WHERE tcno=?", (tcno,))
                     curs.execute("DELETE FROM giriscikis WHERE tcno=?", (tcno,))
                     conn.commit()
@@ -903,7 +896,7 @@ class PersonelSureEkrani(QDialog,PersonelSureEkrani.Ui_Dialog):
         self.setupUi(self)
         self.setWindowTitle('Personel Giris ve Cikis Kayitlari')
         try:
-            self.setWindowIcon(QtGui.QIcon('./icon.png'))
+            self.setWindowIcon(QtGui.QIcon(str(path) + "/icon.png"))
         except Exception:
             pass
         self.Load_Database()
@@ -967,7 +960,7 @@ class PersonelEkle(QDialog,PersonelEkle.Ui_Dialog):
         self.setupUi(self)
         self.setWindowTitle('Personel Ekle')
         try:
-            self.setWindowIcon(QtGui.QIcon('./icon.png'))
+            self.setWindowIcon(QtGui.QIcon(str(path) + "/icon.png"))
         except Exception:
             pass
 
@@ -977,58 +970,18 @@ class PersonelGuncelle(QDialog,PersonelGuncelle.Ui_Dialog):
         self.setupUi(self)
         self.setWindowTitle('Personeli Güncelle')
         try:
-            self.setWindowIcon(QtGui.QIcon('./icon.png'))
+            self.setWindowIcon(QtGui.QIcon(str(path) + "/icon.png"))
         except Exception:
             pass
-
 def main():
     app = QApplication([])
     win = PersonelApp()
     try:
-        win.setWindowIcon(QtGui.QIcon('./icon.png'))
+        win.setWindowIcon(QtGui.QIcon(str(path) + "/icon.png"))
     except Exception:
         pass
     win.setWindowTitle('Personel Mesai Takip Uygulamasi')
     app.exec_()
 
 main()
-
-"""
-class Login(QtWidgets.QDialog):
-    def __init__(self, parent=None):
-        super(Login, self).__init__(parent)
-        self.textName = QtWidgets.QLineEdit(self)
-        self.textPass = QtWidgets.QLineEdit(self)
-        self.textAd = QtWidgets.QLabel('Kullanici Adi',self)
-        self.textParola = QtWidgets.QLabel('Parola', self)
-
-        self.buttonLogin = QtWidgets.QPushButton('Giris', self)
-        self.buttonLogin.clicked.connect(self.handleLogin)
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.textAd)
-        layout.addWidget(self.textName)
-        layout.addWidget(self.textParola)
-        layout.addWidget(self.textPass)
-        layout.addWidget(self.buttonLogin)
-
-    def handleLogin(self):
-        if (self.textName.text() == 'admin' and
-            self.textPass.text() == '123456'):
-            self.accept()
-        else:
-            QtWidgets.QMessageBox.warning(
-                self, 'Hata!', 'Yanlis kullanici veya şifre!')
-
-
-if __name__ == '__main__':
-
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    login = Login()
-
-    if login.exec_() == QtWidgets.QDialog.Accepted:
-        window = PersonelApp()
-        window.show()
-        sys.exit(app.exec_())
-"""
 
