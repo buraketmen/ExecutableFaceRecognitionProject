@@ -1,3 +1,5 @@
+import sys
+
 import numpy
 import os
 import cv2
@@ -9,8 +11,8 @@ import PersonelSureEkrani
 from Personel import Ui_Dialog
 import PersonelEkle
 import PersonelGuncelle
-from PyQt5.QtCore import QTimer, pyqtSlot
-from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtCore import QTimer, pyqtSlot, QRegExp
+from PyQt5.QtGui import QImage, QPixmap, QRegExpValidator
 import face_recognition.api as face_recognition
 from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QMessageBox, QTableWidgetItem, QFileDialog, QWidget
 from xlsxwriter.workbook import Workbook
@@ -99,6 +101,7 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
 
     def Init_Ui(self):
         self.show()
+        self.actionCikis.triggered.connect(self.close)
         self.startButton.clicked.connect(self.start_webcam)
         self.startButton.setEnabled(True)
 
@@ -128,7 +131,6 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
             QMessageBox.warning(self, 'Kamera Hatasi!',
                                 "Sistemde herhangi bir kamera bulunamadi.\n",
                                 QMessageBox.Ok, QMessageBox.Ok)
-
 
     def Personel_Excel(self):
         try:
@@ -190,16 +192,39 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
 
     def Show_Personeller(self):
         self.adding = Personel()
+        regexint = QRegExp("[0-9_]+")
+        validatorint = QRegExpValidator(regexint)
+        self.adding.editAranacakTcNo.setValidator(validatorint)
+        self.adding.editAranacakTcNo.setMaxLength(11)
         self.adding.exec_()
 
     def Show_PersonelEkle(self):
         self.addingAdd = PersonelEkle()
         self.addingAdd.buttonPersonelEkle.clicked.connect(self.Add_Personel)
         self.addingAdd.buttonFotografYukle.clicked.connect(self.Load_Photo)
+        regexint = QRegExp("[0-9_]+")
+        regexstr = QRegExp("[a-z-A-Z_]+")
+        validatorstr = QRegExpValidator(regexstr)
+        validatorint = QRegExpValidator(regexint)
+        self.addingAdd.editTcNo.setValidator(validatorint)
+        self.addingAdd.editAd.setValidator(validatorstr)
+        self.addingAdd.editSoyad.setValidator(validatorstr)
+        self.addingAdd.editYas.setValidator(validatorint)
+        self.addingAdd.editTelefonNo.setValidator(validatorint)
+        self.addingAdd.editTcNo.setMaxLength(11)
+        self.addingAdd.editTelefonNo.setMaxLength(11)
+        self.addingAdd.editAd.setMaxLength(20)
+        self.addingAdd.editSoyad.setMaxLength(20)
+        self.addingAdd.editPozisyon.setMaxLength(30)
+        self.addingAdd.editYas.setMaxLength(2)
         self.addingAdd.exec_()
 
     def Show_PersonelGirisCikis(self):
         self.addingGirisCikis = PersonelSureEkrani()
+        regexint = QRegExp("[0-9_]+")
+        validatorint = QRegExpValidator(regexint)
+        self.addingGirisCikis.editArama.setValidator(validatorint)
+        self.addingGirisCikis.editArama.setMaxLength(11)
         self.addingGirisCikis.exec_()
 
     def detect_webcam_face(self, status):
@@ -276,11 +301,6 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
         face_encodings = []
         face_names = []
 
-        #small_frame = cv2.resize(img, (0, 0), fx=0.25, fy=0.25)
-        #rgb_small_frame = small_frame[:, :, ::-1]
-        #face_locations = face_recognition.face_locations(rgb_small_frame)
-        #face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
-
         rgb_img = img[:, :, ::-1]
         face_locations = face_recognition.face_locations(rgb_img)
         face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
@@ -294,13 +314,9 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
 
             face_names.append(name)
         for (top, right, bottom, left), name in zip(face_locations, face_names):
-            #top *= 4
-            #right *= 4
-            #bottom *= 4
-            #left *= 4
             cv2.rectangle(img, (left, top), (right, bottom), (0, 255, 0), 1)
-            cv2.rectangle(img, (left, bottom + 35), (right, bottom), (0, 255, 0), cv2.FILLED)
-            font = cv2.FONT_HERSHEY_COMPLEX_SMALL
+            cv2.rectangle(img, (left, bottom + 15), (right, bottom), (0, 255, 0), cv2.FILLED)
+            font = cv2.FONT_HERSHEY_PLAIN = 1
             if(str(name) != "Bilinmiyor"):
                 switch_name = name[::-1]
                 dotname = switch_name[4:]
@@ -309,7 +325,7 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
                 self.Add_Log(tcno)
             else:
                 new_name = "Bilinmiyor"
-            cv2.putText(img, new_name, (left + 1, bottom + 30), font, 1.0, (255, 255, 255), 1)
+            cv2.putText(img, new_name, (left + 1, bottom + 12), font, 1.0, (255, 255, 255), 1)
         return img
 
     def Add_Log(self,tcno):
@@ -529,12 +545,31 @@ class Personel(QDialog,Ui_Dialog):
 
     def Show_PersonelSureEkrani(self):
         self.adding = PersonelSureEkrani()
+        regexint = QRegExp("[0-9_]+")
+        validatorint = QRegExpValidator(regexint)
+        self.adding.editArama.setValidator(validatorint)
+        self.adding.editArama.setMaxLength(11)
         self.adding.exec_()
 
     def Show_PersonelEkle(self):
         self.addingAdd = PersonelEkle()
         self.addingAdd.buttonPersonelEkle.clicked.connect(self.Add_Personel)
         self.addingAdd.buttonFotografYukle.clicked.connect(self.Load_Photo)
+        regexint = QRegExp("[0-9_]+")
+        regexstr = QRegExp("[a-z-A-Z_]+")
+        validatorstr = QRegExpValidator(regexstr)
+        validatorint = QRegExpValidator(regexint)
+        self.addingAdd.editTcNo.setValidator(validatorint)
+        self.addingAdd.editAd.setValidator(validatorstr)
+        self.addingAdd.editSoyad.setValidator(validatorstr)
+        self.addingAdd.editYas.setValidator(validatorint)
+        self.addingAdd.editTelefonNo.setValidator(validatorint)
+        self.addingAdd.editTcNo.setMaxLength(11)
+        self.addingAdd.editTelefonNo.setMaxLength(11)
+        self.addingAdd.editAd.setMaxLength(20)
+        self.addingAdd.editSoyad.setMaxLength(20)
+        self.addingAdd.editPozisyon.setMaxLength(30)
+        self.addingAdd.editYas.setMaxLength(2)
         self.addingAdd.exec_()
 
     def Show_PersonelGuncelle(self):
@@ -543,6 +578,21 @@ class Personel(QDialog,Ui_Dialog):
         self.buttonPersonelSil.setEnabled(False)
         self.addingUpdate.buttonFotografYukle.clicked.connect(self.Loaded_Photo)
         self.addingUpdate.buttonPersonelDuzenle.clicked.connect(self.Update_Personel)
+        regexint = QRegExp("[0-9_]+")
+        regexstr = QRegExp("[a-z-A-Z_]+")
+        validatorstr = QRegExpValidator(regexstr)
+        validatorint = QRegExpValidator(regexint)
+        self.addingUpdate.editTcNo.setValidator(validatorint)
+        self.addingUpdate.editAd.setValidator(validatorstr)
+        self.addingUpdate.editSoyad.setValidator(validatorstr)
+        self.addingUpdate.editYas.setValidator(validatorint)
+        self.addingUpdate.editTelefonNo.setValidator(validatorint)
+        self.addingUpdate.editTcNo.setMaxLength(11)
+        self.addingUpdate.editTelefonNo.setMaxLength(11)
+        self.addingUpdate.editAd.setMaxLength(20)
+        self.addingUpdate.editSoyad.setMaxLength(20)
+        self.addingUpdate.editPozisyon.setMaxLength(30)
+        self.addingUpdate.editYas.setMaxLength(2)
         self.Show_Data()
         self.addingUpdate.exec_()
 
