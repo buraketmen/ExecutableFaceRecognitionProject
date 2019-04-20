@@ -5,6 +5,7 @@ import os
 import cv2
 import datetime
 import locale
+import time as t
 from PyQt5 import QtGui
 from PersonelTakipMain import Ui_MainWindow
 import PersonelSureEkrani
@@ -78,9 +79,11 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
         self.photo = None
         self.fname = None
         self.capture = None
+        self.oldtcno=None
         self.iterim=1
         self.mesaitipi = "Gunduz"
         self.oldsecond=None
+        self.oldsecondfornewtcno = 666
         self.backimage= cv2.imread(str(path)+'/background.jpg')
         self.Init_Ui()
         self.status_bar()
@@ -322,7 +325,10 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
                 dotname = switch_name[4:]
                 new_name = dotname[::-1]
                 tcno=new_name
+                if(str(self.oldtcno) !=str(tcno) and self.oldtcno!=None):
+                    self.Add_Log(self.oldtcno)
                 self.Add_Log(tcno)
+                self.oldtcno = tcno
             else:
                 new_name = "Bilinmiyor"
             cv2.putText(img, new_name, (left + 1, bottom + 12), font, 1.0, (255, 255, 255), 1)
@@ -359,11 +365,6 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
         if (self.iterim == 1):
             self.iterim = 2
             self.oldsecond = second
-            logToday.write(tcno + " kimlik numarali kisi " + time + " saatinde kamerada gorundu.\n")
-            curs.execute("INSERT INTO log (TcNo,Ad,Soyad,Tarih,Saat) VALUES(?,?,?,?,?)",
-                         (tcno, ad, soyad, date, time))
-            conn.commit()
-            self.Load_Database()
 
         searchall = curs.execute('SELECT Saat FROM giriscikis WHERE TcNo = ? AND Tarih =?', (tcno,date,))
         rows = searchall.fetchall()
@@ -385,13 +386,23 @@ class PersonelApp(QMainWindow,Ui_MainWindow):
                                  (tcno, ad, soyad, date, time,tipi))
                     conn.commit()
 
-        if(self.oldsecond +1 <= second):
+        if(self.oldsecond +3 <= second or self.oldtcno!=tcno):
             self.oldsecond = second
-            logToday.write(tcno + " kimlik numarali kisi "+ time + " saatinde kamerada gorundu.\n")
-            curs.execute("INSERT INTO log (TcNo,Ad,Soyad,Tarih,Saat) VALUES(?,?,?,?,?)",
+            if(self.oldtcno!=tcno):
+                if(self.oldsecondfornewtcno+3<=second or self.oldsecondfornewtcno==666):
+                    self.oldsecondfornewtcno=second
+                    logToday.write(tcno + " kimlik numarali kisi " + time + " saatinde kamerada gorundu.\n")
+                    curs.execute("INSERT INTO log (TcNo,Ad,Soyad,Tarih,Saat) VALUES(?,?,?,?,?)",
+                             (tcno, ad, soyad, date, time))
+                    conn.commit()
+                    self.Load_Database()
+            else:
+                logToday.write(tcno + " kimlik numarali kisi "+ time + " saatinde kamerada gorundu.\n")
+                curs.execute("INSERT INTO log (TcNo,Ad,Soyad,Tarih,Saat) VALUES(?,?,?,?,?)",
                          (tcno, ad, soyad, date, time))
-            conn.commit()
-            self.Load_Database()
+                conn.commit()
+                self.Load_Database()
+
 
     def Add_Personel(self):
         global known_face_encodings
@@ -605,8 +616,7 @@ class Personel(QDialog,Ui_Dialog):
         if(str(tcno)!=""):
             while self.tableWidget.rowCount() > 0:
                 self.tableWidget.removeRow(0)
-            res = conn.execute("SELECT TcNo,Ad,Soyad,Yas,Pozisyon,TelNo,MesaiTipi,Aciklama FROM personeller WHERE TcNo = ? ",
-                               (tcno,))
+            res = conn.execute("SELECT TcNo,Ad,Soyad,Yas,Pozisyon,TelNo,MesaiTipi,Aciklama FROM personeller WHERE TcNo LIKE ?",('%' + tcno + '%',))
             for row_index, row_data in enumerate(res):
                 self.tableWidget.insertRow(row_index)
                 for colm_index, colm_data in enumerate(row_data):
@@ -966,7 +976,7 @@ class PersonelSureEkrani(QDialog,PersonelSureEkrani.Ui_Dialog):
         if (str(tcno) != ""):
             while self.tableWidget.rowCount() > 0:
                 self.tableWidget.removeRow(0)
-            res = conn.execute("SELECT TcNo,Ad,Soyad,Tarih,Saat,Tipi FROM giriscikis WHERE TcNo = ? ", (tcno,))
+            res = conn.execute("SELECT TcNo,Ad,Soyad,Tarih,Saat,Tipi FROM giriscikis WHERE TcNo LIKE ?", ('%' + tcno + '%',))
             for row_index, row_data in enumerate(res):
                 self.tableWidget.insertRow(row_index)
                 for colm_index, colm_data in enumerate(row_data):
